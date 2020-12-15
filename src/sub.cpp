@@ -6,76 +6,51 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <iostream>
+#include <nav_msgs/Odometry.h>
 
 
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud;
 
-void cloud_cb (const sensor_msgs::PointCloud::ConstPtr& input){
-    sensor_msgs::PointCloud2 output;
-    sensor_msgs::convertPointCloudToPointCloud2(*input, output);
+nav_msgs::Odometry::Ptr nav;
 
-    pcl::PCLPointCloud2 pcl_pc2;
-    pcl_conversions::toPCL(output,pcl_pc2);
-    pcl::fromPCLPointCloud2(pcl_pc2,*temp_cloud);
-
+void cloud_cb(const nav_msgs::Odometry::ConstPtr& msg){
+    nav->pose.pose.position.x = msg->pose.pose.position.x;
+    nav->pose.pose.position.y = msg->pose.pose.position.y;
+    nav->pose.pose.position.z = msg->pose.pose.position.z;
+    nav->pose.pose.orientation.x = msg->pose.pose.orientation.x;
+    nav->pose.pose.orientation.y = msg->pose.pose.orientation.y;
+    nav->pose.pose.orientation.z = msg->pose.pose.orientation.z;
 }
-
 int main (int argc, char** argv){
+
+
   ros::init (argc, argv, "my_pcl_tutorial");
   ros::NodeHandle nh;
-  ros::Subscriber sub = nh.subscribe("ce30_points", 1, cloud_cb);
+  ros::Subscriber sub = nh.subscribe("/laser_odom_to_init", 1, cloud_cb);
 
-  temp_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>); //주소에 어던떤 공간할당
-
-
-
-
-  //time_t timer = time(NULL);
-  //struct tm* ltime = localtime(&timer);
-  //char fn_date[13];
-  //sprintf(fn_date, "%02d%02d%02d_%02d%02d%02d", (ltime->tm_year) - 100, (ltime->tm_mon) + 1, ltime->tm_mday,
-  //          ltime->tm_hour, ltime->tm_min, ltime->tm_sec);
-  //std::string fnDate(fn_date);
-
-
-
+  nav = nav_msgs::Odometry::Ptr (new nav_msgs::Odometry);
   std::string home_env;
   home_env = getenv("HOME");
 
   std::string fileName;
-  fileName = home_env + "/rosLog/bag2csv.csv";
+  fileName = home_env + "/Desktop/loam_front.csv";
 
   FILE* logFp_;
   logFp_ = fopen(fileName.c_str(), "wb");
-
 
   ros::Rate rate(20.0f);
 
     while (ros::ok()) {
 
-        if (temp_cloud->points.size() != 0) {
-            ros::Time t = ros::Time::now();
+        fprintf(logFp_, "%f, %f, %f, %f,%f,%f",nav->pose.pose.position.x, nav->pose.pose.position.y, nav->pose.pose.position.z,
+                nav->pose.pose.orientation.x,nav->pose.pose.orientation.y,nav->pose.pose.orientation.z);
 
-            std::string temp_frame_id;
-            temp_frame_id = temp_cloud->header.frame_id;
-            //char c_temp_frame_id;
-  //          strcpy(c_temp_frame_id,temp_frame_id.c_str());
-
-            fprintf(logFp_, "%d.%d,%s,%d,", t.sec, t.nsec,temp_frame_id.c_str(),temp_cloud->header.seq);
-
-
-            for (int i = 0; i < temp_cloud->points.size(); i++) {
-                fprintf(logFp_, "%f, %f, %f,",temp_cloud->points[i].x, temp_cloud->points[i].y, temp_cloud->points[i].z);
-//                  fprintf(logFp_, "%f," ,temp_cloud->points[i].x);
-
-            }
         fprintf(logFp_, "\n");
- //           std::cout<< temp_cloud->header<<std::endl;;
-        }
-
+        float a = nav->pose.pose.position.x;
+        std::cout << nav->pose.pose.orientation.x << std::endl;
         ros::spinOnce();
         rate.sleep();
     }
+
 }
 
